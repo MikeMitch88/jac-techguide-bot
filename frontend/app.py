@@ -16,7 +16,7 @@ import uuid
 # CONFIGURATION
 # ============================================================================
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.getenv("BACKEND_URL", "https://jac-techguide-bot.onrender.com")
 
 # Page configuration
 st.set_page_config(
