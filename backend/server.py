@@ -427,6 +427,17 @@ async def health_check():
         "ai_enabled": AI_AVAILABLE
     }
 
+@app.get("/health")
+@app.head("/health")  # Add HEAD method support
+async def health_check():
+    """Health check endpoint - supports both GET and HEAD"""
+    return {
+        "status": "healthy",
+        "service": "TechGuide Bot API",
+        "version": "3.0.0",
+        "ai_enabled": AI_AVAILABLE
+    }
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
     """Main chat endpoint"""
