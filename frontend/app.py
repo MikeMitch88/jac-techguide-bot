@@ -1,15 +1,16 @@
+
 """
-TechGuide Bot - Advanced ChatGPT-Style Frontend
-Modern conversational interface with real-time AI recommendations
+TechGuide Bot - Ultra-Modern AI Assistant UI
+Professional ChatGPT-style interface with proper alignment
 """
 
 import streamlit as st
 import requests
-import json
+from typing import Dict, Any
 from datetime import datetime
 import time
 import os
-from typing import Dict, Any, List
+import uuid
 
 # ============================================================================
 # CONFIGURATION
@@ -19,657 +20,629 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # Page configuration
 st.set_page_config(
-    page_title="TechGuide Bot - AI Language Advisor",
+    page_title="TechGuide AI - Your Programming Mentor",
     page_icon="🤖",
     layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://github.com/yourusername/techguide-bot',
-        'Report a bug': 'https://github.com/yourusername/techguide-bot/issues',
-        'About': '# TechGuide Bot\nYour AI-powered programming language advisor!'
-    }
+    initial_sidebar_state="expanded"
 )
 
 # ============================================================================
-# CUSTOM STYLING
+# ENHANCED MODERN STYLING WITH PROPER ALIGNMENT
 # ============================================================================
 
 st.markdown("""
 <style>
-    /* Main container styling */
-    .main {
-        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+    /* ==================== GLOBAL THEME ==================== */
+    :root {
+        --primary-violet: #8B5CF6;
+        --primary-purple: #A855F7;
+        --accent-teal: #14B8A6;
+        --accent-cyan: #06B6D4;
+        --dark-bg: #0F0F1E;
+        --dark-card: #1A1A2E;
+        --dark-elevated: #232342;
+        --text-primary: #F8FAFC;
+        --text-secondary: #94A3B8;
+        --border-subtle: rgba(139, 92, 246, 0.1);
     }
     
-    /* Chat container */
-    .chat-container {
-        padding: 1rem;
-        border-radius: 15px;
-        margin: 0.5rem 0;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
     }
     
-    /* User message bubble */
-    .user-message {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 20px 20px 5px 20px;
-        margin: 0.5rem 0;
-        margin-left: auto;
-        max-width: 80%;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        animation: slideInRight 0.3s ease-out;
+    /* Remove default padding */
+    .main > div {
+        padding-top: 2rem;
     }
     
-    /* Bot message bubble */
-    .bot-message {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a7b 100%);
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 20px 20px 20px 5px;
-        margin: 0.5rem 0;
-        max-width: 85%;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        animation: slideInLeft 0.3s ease-out;
+    .stApp {
+        background: linear-gradient(135deg, #0F0F1E 0%, #1A1A2E 50%, #1E1633 100%);
+        color: var(--text-primary);
     }
     
-    /* Recommendation card */
-    .recommendation-card {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border-left: 5px solid #667eea;
-        padding: 2rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        animation: fadeIn 0.5s ease-out;
-    }
+    #MainMenu, footer, header {visibility: hidden;}
     
-    /* Language title */
-    .language-title {
-        font-size: 2.5rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 1rem;
-        animation: glow 2s ease-in-out infinite;
-    }
-    
-    /* Learning path timeline */
-    .timeline-item {
-        border-left: 3px solid #667eea;
-        padding-left: 1.5rem;
-        margin: 1rem 0;
-        position: relative;
-    }
-    
-    .timeline-item::before {
-        content: "●";
-        position: absolute;
-        left: -8px;
-        color: #667eea;
-        font-size: 1.2rem;
-    }
-    
-    /* Resource link styling */
-    .resource-link {
-        background: rgba(102, 126, 234, 0.1);
-        padding: 0.8rem 1rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
-        border-left: 3px solid #667eea;
-        transition: all 0.3s ease;
-    }
-    
-    .resource-link:hover {
-        background: rgba(102, 126, 234, 0.2);
-        transform: translateX(5px);
-    }
-    
-    /* Metric cards */
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 15px;
-        text-align: center;
-        color: white;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        animation: pulse 2s ease-in-out infinite;
-    }
-    
-    /* Status badge */
-    .status-badge {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-    
-    .status-online {
-        background: #4caf50;
-        color: white;
-    }
-    
-    .status-offline {
-        background: #f44336;
-        color: white;
-    }
-    
-    /* Animations */
-    @keyframes slideInRight {
-        from {
-            opacity: 0;
-            transform: translateX(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-    
-    @keyframes slideInLeft {
-        from {
-            opacity: 0;
-            transform: translateX(-30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-    
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    @keyframes glow {
-        0%, 100% { filter: brightness(1); }
-        50% { filter: brightness(1.2); }
-    }
-    
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.02); }
-    }
-    
-    /* Header styling */
+    /* ==================== HEADER ==================== */
     .main-header {
-        text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-violet) 0%, var(--primary-purple) 50%, var(--accent-teal) 100%);
+        padding: 2rem;
         border-radius: 20px;
         margin-bottom: 2rem;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+        text-align: center;
     }
     
     .main-header h1 {
         color: white;
-        font-size: 3rem;
+        font-size: 2.2rem;
         font-weight: 800;
         margin: 0;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.3);
     }
     
     .main-header p {
-        color: rgba(255,255,255,0.9);
-        font-size: 1.2rem;
+        color: rgba(255,255,255,0.95);
+        font-size: 1rem;
         margin: 0.5rem 0 0 0;
+        font-weight: 500;
     }
     
-    /* Input box styling */
-    .stTextInput > div > div > input {
-        background: #1a1a2e;
-        color: white;
-        border: 2px solid #667eea;
-        border-radius: 25px;
-        padding: 1rem 1.5rem;
-        font-size: 1.1rem;
+    /* ==================== CHAT CONTAINER ==================== */
+    .stChatMessage {
+        background: transparent !important;
+        padding: 0.75rem 0 !important;
+        margin-bottom: 1.5rem !important;
     }
     
-    /* Button styling */
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 0.8rem 2rem;
-        font-size: 1.1rem;
+    /* Force proper alignment */
+    [data-testid="stChatMessage"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+    }
+    
+    /* User messages - RIGHT ALIGNED */
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+        justify-content: flex-end !important;
+        flex-direction: row-reverse !important;
+    }
+    
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) [data-testid="stChatMessageContent"] {
+        background: linear-gradient(135deg, var(--primary-violet), var(--primary-purple)) !important;
+        color: white !important;
+        padding: 1rem 1.25rem !important;
+        border-radius: 18px 18px 4px 18px !important;
+        max-width: 70% !important;
+        margin-left: auto !important;
+        margin-right: 0.75rem !important;
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4) !important;
+        font-size: 0.95rem !important;
+        line-height: 1.6 !important;
+    }
+    
+    /* Assistant messages - LEFT ALIGNED */
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+        justify-content: flex-start !important;
+    }
+    
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) [data-testid="stChatMessageContent"] {
+        background: var(--dark-elevated) !important;
+        color: var(--text-primary) !important;
+        padding: 1.25rem 1.5rem !important;
+        border-radius: 4px 18px 18px 18px !important;
+        max-width: 80% !important;
+        margin-left: 0.75rem !important;
+        margin-right: auto !important;
+        border: 1px solid var(--border-subtle) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+        font-size: 0.95rem !important;
+        line-height: 1.7 !important;
+    }
+    
+    /* Avatar styling */
+    [data-testid="chatAvatarIcon-assistant"] {
+        background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan)) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(20, 184, 166, 0.5) !important;
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    [data-testid="chatAvatarIcon-user"] {
+        background: linear-gradient(135deg, var(--primary-violet), var(--primary-purple)) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5) !important;
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    /* Fix markdown in chat messages */
+    [data-testid="stChatMessageContent"] p {
+        margin: 0 0 0.5rem 0 !important;
+    }
+    
+    [data-testid="stChatMessageContent"] p:last-child {
+        margin-bottom: 0 !important;
+    }
+    
+    [data-testid="stChatMessageContent"] ul, 
+    [data-testid="stChatMessageContent"] ol {
+        margin: 0.5rem 0 !important;
+        padding-left: 1.5rem !important;
+    }
+    
+    [data-testid="stChatMessageContent"] li {
+        margin: 0.25rem 0 !important;
+    }
+    
+    [data-testid="stChatMessageContent"] strong {
+        font-weight: 700 !important;
+    }
+    
+    /* ==================== RECOMMENDATION CARD ==================== */
+    .recommendation-card {
+        background: linear-gradient(135deg, var(--dark-elevated), var(--dark-card));
+        border: 1px solid var(--border-subtle);
+        border-left: 4px solid var(--primary-violet);
+        padding: 2rem;
+        border-radius: 16px;
+        margin: 1.5rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    
+    .language-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary-violet), var(--accent-teal));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+    }
+    
+    /* ==================== METRIC CARDS ==================== */
+    .metric-card {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(20, 184, 166, 0.15));
+        border: 1px solid var(--border-subtle);
+        padding: 1.5rem;
+        border-radius: 14px;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(139, 92, 246, 0.3);
+    }
+    
+    .metric-card h3 {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
         font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    .metric-card h2 {
+        font-size: 1.5rem;
+        color: var(--text-primary);
+        margin: 0;
+        font-weight: 700;
     }
     
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+    /* ==================== TIMELINE ==================== */
+    .timeline-item {
+        position: relative;
+        padding-left: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-left: 2px solid var(--border-subtle);
+        margin-left: 0.5rem;
     }
     
-    /* Career path badges */
+    .timeline-item:last-child {
+        border-left: 2px solid transparent;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -7px;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-violet), var(--accent-teal));
+        box-shadow: 0 0 0 4px var(--dark-bg), 0 0 16px rgba(139, 92, 246, 0.5);
+    }
+    
+    .timeline-item h4 {
+        color: var(--text-primary);
+        font-size: 1.05rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .timeline-item .duration {
+        color: var(--accent-teal);
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+    
+    .timeline-item li {
+        color: var(--text-secondary);
+        padding: 0.3rem 0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        list-style: none;
+    }
+    
+    .timeline-item li::before {
+        content: '→';
+        color: var(--accent-teal);
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    
+    /* ==================== RESOURCES ==================== */
+    .resource-link {
+        background: rgba(139, 92, 246, 0.08);
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        margin: 0.75rem 0;
+        border-left: 3px solid var(--primary-violet);
+        transition: all 0.3s;
+    }
+    
+    .resource-link:hover {
+        background: rgba(139, 92, 246, 0.15);
+        transform: translateX(8px);
+    }
+    
+    .resource-link a {
+        color: var(--accent-teal) !important;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    /* ==================== CAREER BADGES ==================== */
     .career-badge {
         display: inline-block;
-        background: rgba(102, 126, 234, 0.2);
-        color: #667eea;
+        background: rgba(20, 184, 166, 0.15);
+        color: var(--accent-teal);
         padding: 0.5rem 1rem;
         border-radius: 20px;
-        margin: 0.3rem;
-        font-size: 0.9rem;
+        margin: 0.4rem 0.3rem;
+        font-size: 0.85rem;
         font-weight: 600;
-        border: 1px solid #667eea;
+        border: 1px solid rgba(20, 184, 166, 0.3);
+        transition: all 0.3s;
+    }
+    
+    .career-badge:hover {
+        background: rgba(20, 184, 166, 0.25);
+        transform: translateY(-2px);
+    }
+    
+    /* ==================== SIDEBAR ==================== */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, var(--dark-bg), var(--dark-card));
+        border-right: 1px solid var(--border-subtle);
+    }
+    
+    [data-testid="stSidebar"] .stButton > button {
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(20, 184, 166, 0.2));
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+        border-radius: 24px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        width: 100%;
+    }
+    
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background: linear-gradient(135deg, var(--primary-violet), var(--accent-teal));
+        transform: translateX(4px);
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+    }
+    
+    /* Status badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .status-online {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22C55E;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    
+    .status-offline {
+        background: rgba(239, 68, 68, 0.15);
+        color: #EF4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    /* ==================== CHAT INPUT ==================== */
+    .stChatInputContainer textarea {
+        background: var(--dark-elevated) !important;
+        border: 1px solid var(--border-subtle) !important;
+        border-radius: 16px !important;
+        color: var(--text-primary) !important;
+        font-size: 0.95rem !important;
+        padding: 1rem !important;
+    }
+    
+    .stChatInputContainer textarea:focus {
+        border-color: var(--primary-violet) !important;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3) !important;
+    }
+    
+    /* ==================== SCROLLBAR ==================== */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--dark-bg);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, var(--primary-violet), var(--accent-teal));
+        border-radius: 4px;
+    }
+    
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 768px) {
+        .main-header h1 {
+            font-size: 1.75rem;
+        }
+        
+        [data-testid="stChatMessageContent"] {
+            max-width: 90% !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# SESSION STATE INITIALIZATION
+# SESSION STATE
 # ============================================================================
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Add welcome message
+    welcome_msg = """Hello! I'm **TechGuide AI**, your intelligent programming mentor.
+
+I help developers at all levels discover the perfect technology for their goals. I provide:
+
+- Personalized language recommendations
+- Structured learning roadmaps  
+- Career insights and market trends
+- Curated learning resources
+
+**What would you like to build today?**"""
+    
     st.session_state.messages.append({
         "role": "assistant",
-        "content": "👋 Hello! I'm **TechGuide Bot**, your AI-powered programming language advisor.\n\nI help you discover the perfect programming language for your goals. Just tell me what you want to build, and I'll guide you to the best choice with personalized recommendations!\n\n**What would you like to create today?**",
+        "content": welcome_msg,
         "timestamp": datetime.now().isoformat()
     })
 
 if "session_id" not in st.session_state:
-    import uuid
     st.session_state.session_id = str(uuid.uuid4())
 
 if "backend_status" not in st.session_state:
     st.session_state.backend_status = None
-
-if "auto_refresh" not in st.session_state:
-    st.session_state.auto_refresh = True
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
 def check_backend_health() -> Dict[str, Any]:
-    """Check backend health status"""
     try:
         response = requests.get(f"{BACKEND_URL}/health", timeout=5)
         if response.status_code == 200:
             return {"status": "online", "data": response.json()}
-        else:
-            return {"status": "error", "message": f"HTTP {response.status_code}"}
-    except requests.exceptions.ConnectionError:
-        return {"status": "offline", "message": "Cannot connect to backend"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error"}
+    except:
+        return {"status": "offline"}
 
 def send_chat_message(message: str) -> Dict[str, Any]:
-    """Send chat message to backend"""
     try:
-        with st.spinner("🤔 Thinking..."):
-            response = requests.post(
-                f"{BACKEND_URL}/chat",
-                json={
-                    "message": message,
-                    "session_id": st.session_state.session_id
-                },
-                timeout=15
-            )
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {
-                "status": "error",
-                "response": f"Backend error: {response.status_code}"
-            }
-    
-    except requests.exceptions.ConnectionError:
-        return {
-            "status": "error",
-            "response": "❌ **Connection Error**\n\nCannot reach the backend server. Please ensure it's running:\n```bash\nuvicorn server:app --reload\n```"
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "response": f"Error: {str(e)}"
-        }
-
-def get_conversation_history() -> Dict[str, Any]:
-    """Get conversation history from backend"""
-    try:
-        response = requests.get(
-            f"{BACKEND_URL}/history/{st.session_state.session_id}",
-            timeout=5
+        response = requests.post(
+            f"{BACKEND_URL}/chat",
+            json={"message": message, "session_id": st.session_state.session_id},
+            timeout=15
         )
         if response.status_code == 200:
             return response.json()
-        return {"messages": [], "recommendations": []}
-    except:
-        return {"messages": [], "recommendations": []}
+        return {"status": "error", "response": f"Backend error: {response.status_code}"}
+    except requests.exceptions.ConnectionError:
+        return use_fallback_logic(message)
+    except Exception as e:
+        return {"status": "error", "response": f"Error: {str(e)}"}
 
-def display_learning_path(learning_path: List[Dict]):
-    """Display learning path timeline"""
-    st.markdown("### 🗺️ Your Learning Journey")
+def use_fallback_logic(message: str) -> Dict[str, Any]:
+    msg_lower = message.lower()
     
+    if any(word in msg_lower for word in ["web", "website", "frontend"]):
+        return {
+            "status": "ok",
+            "response": "I recommend **JavaScript** for web development.\n\nJavaScript powers modern web experiences with frameworks like React, Vue, and Angular for stunning UIs, plus Node.js for scalable backends. It's beginner-friendly with a massive ecosystem.",
+            "type": "recommendation"
+        }
+    elif any(word in msg_lower for word in ["data", "science", "ml", "ai"]):
+        return {
+            "status": "ok",
+            "response": "I recommend **Python** for data science and AI.\n\nPython dominates the AI/ML space with libraries like TensorFlow, PyTorch, Pandas, and NumPy. Its clean syntax makes it perfect for both beginners and professionals.",
+            "type": "recommendation"
+        }
+    elif any(word in msg_lower for word in ["mobile", "app", "ios", "android"]):
+        return {
+            "status": "ok",
+            "response": "I recommend **Swift/Kotlin** for native mobile development.\n\nSwift (iOS) and Kotlin (Android) are the official languages for their platforms. Build blazing-fast apps with access to all native features.",
+            "type": "recommendation"
+        }
+    else:
+        return {
+            "status": "ok",
+            "response": "Hello! I can help you choose the perfect programming language.\n\nTell me what you want to build:\n• Web applications\n• Data science projects\n• Mobile apps\n• Games",
+            "type": "greeting"
+        }
+
+def display_learning_path(learning_path: list):
+    st.markdown("### Learning Journey")
     for phase in learning_path:
+        topics_html = "".join([f"<li>{topic}</li>" for topic in phase['topics']])
         st.markdown(f"""
         <div class="timeline-item">
-            <h4>📘 {phase['phase']} <span style="color: #667eea;">({phase['duration']})</span></h4>
-            <ul>
-                {''.join([f'<li>{topic}</li>' for topic in phase['topics']])}
-            </ul>
+            <h4>{phase['phase']}<span class="duration">({phase['duration']})</span></h4>
+            <ul>{topics_html}</ul>
         </div>
         """, unsafe_allow_html=True)
 
-def display_resources(resources: List[str]):
-    """Display learning resources"""
-    st.markdown("### 📚 Curated Learning Resources")
-    
+def display_resources(resources: list):
+    st.markdown("### Learning Resources")
     for idx, resource in enumerate(resources, 1):
-        # Parse resource name and URL if present
         if " - " in resource:
             name, url = resource.split(" - ", 1)
             st.markdown(f"""
             <div class="resource-link">
-                {idx}. <strong>{name}</strong><br>
-                <a href="{url}" target="_blank" style="color: #667eea; text-decoration: none;">
-                    🔗 {url}
-                </a>
+                <strong>{idx}. {name}</strong><br>
+                <a href="{url}" target="_blank">{url}</a>
             </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown(f"""
-            <div class="resource-link">
-                {idx}. <strong>{resource}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="resource-link"><strong>{idx}. {resource}</strong></div>', unsafe_allow_html=True)
 
-def display_career_paths(career_paths: List[str]):
-    """Display career path badges"""
-    st.markdown("### 💼 Career Opportunities")
-    
-    badges_html = "".join([
-        f'<span class="career-badge">{path}</span>'
-        for path in career_paths
-    ])
-    
-    st.markdown(f'<div style="margin: 1rem 0;">{badges_html}</div>', unsafe_allow_html=True)
+def display_career_paths(career_paths: list):
+    st.markdown("### Career Opportunities")
+    badges_html = "".join([f'<span class="career-badge">{path}</span>' for path in career_paths])
+    st.markdown(f'<div>{badges_html}</div>', unsafe_allow_html=True)
 
 def display_recommendation(result: Dict[str, Any]):
-    """Display recommendation in beautiful format"""
-    
-    if result.get("type") == "recommendation":
-        language = result.get("language", "Unknown")
+    if result.get("type") == "recommendation" and result.get("language"):
+        language = result.get("language")
         reason = result.get("reason", "")
         resources = result.get("resources", [])
         metadata = result.get("metadata", {})
         
-        # Main recommendation card
-        st.markdown(f"""
-        <div class="recommendation-card">
-            <h1 class="language-title">🎯 {language}</h1>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="recommendation-card"><h1 class="language-title">{language}</h1></div>', unsafe_allow_html=True)
         
-        # Metrics row
         if metadata:
             col1, col2, col3 = st.columns(3)
-            
             with col1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h3>📊 Difficulty</h3>
-                    <h2>{metadata.get('difficulty', 'N/A')}</h2>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.markdown(f'<div class="metric-card"><h3>Difficulty</h3><h2>{metadata.get("difficulty", "N/A")}</h2></div>', unsafe_allow_html=True)
             with col2:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h3>⏱️ Learning Time</h3>
-                    <h2>{metadata.get('estimated_time', 'N/A')}</h2>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.markdown(f'<div class="metric-card"><h3>Timeline</h3><h2>{metadata.get("estimated_time", "N/A")}</h2></div>', unsafe_allow_html=True)
             with col3:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h3>🎓 Paths</h3>
-                    <h2>{len(metadata.get('career_paths', []))}</h2>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<div class="metric-card"><h3>Careers</h3><h2>{len(metadata.get("career_paths", []))}</h2></div>', unsafe_allow_html=True)
         
-        # Reason
-        st.markdown("### 💡 Why This Language?")
-        st.markdown(f"<p style='font-size: 1.1rem; line-height: 1.8; color: #e0e0e0;'>{reason}</p>", unsafe_allow_html=True)
+        st.markdown("### Why This Language?")
+        st.markdown(f"<p style='font-size: 1.05rem; line-height: 1.8; color: var(--text-secondary);'>{reason}</p>", unsafe_allow_html=True)
         
-        # Learning path
         if metadata.get("learning_path"):
             display_learning_path(metadata["learning_path"])
-        
-        # Resources
         if resources:
             display_resources(resources)
-        
-        # Career paths
         if metadata.get("career_paths"):
             display_career_paths(metadata["career_paths"])
-        
-        # Classification info (if available)
-        if "classification" in result:
-            with st.expander("🔍 How I Understood Your Request"):
-                classification = result["classification"]
-                st.write(f"**Confidence:** {classification.get('confidence', 0):.0%}")
-                st.write(f"**Detected Keywords:** {', '.join(classification.get('detected_keywords', []))}")
 
 # ============================================================================
 # SIDEBAR
 # ============================================================================
 
 with st.sidebar:
-    st.markdown("# 🤖 TechGuide Bot")
-    st.markdown("### AI Language Advisor")
-    
+    st.markdown("# TechGuide AI")
+    st.markdown("### Programming Mentor")
     st.markdown("---")
     
-    # Backend status
-    st.markdown("### 🔌 Backend Status")
-    
-    if st.button("🔄 Check Status", use_container_width=True):
+    st.markdown("### Connection")
+    if st.button("Check Status", use_container_width=True):
         st.session_state.backend_status = check_backend_health()
     
     if st.session_state.backend_status:
-        status = st.session_state.backend_status.get("status")
-        
-        if status == "online":
-            st.markdown('<span class="status-badge status-online">🟢 Online</span>', unsafe_allow_html=True)
-            data = st.session_state.backend_status.get("data", {})
-            st.caption(f"Version: {data.get('version', 'N/A')}")
+        if st.session_state.backend_status.get("status") == "online":
+            st.markdown('<span class="status-badge status-online">Connected</span>', unsafe_allow_html=True)
         else:
-            st.markdown('<span class="status-badge status-offline">🔴 Offline</span>', unsafe_allow_html=True)
-            st.caption("Start backend: `uvicorn server:app --reload`")
+            st.markdown('<span class="status-badge status-offline">Offline Mode</span>', unsafe_allow_html=True)
     
     st.markdown("---")
+    st.markdown("### Quick Start")
     
-    # Session info
-    st.markdown("### 📊 Session Info")
-    st.caption(f"**ID:** {st.session_state.session_id[:8]}...")
-    st.caption(f"**Messages:** {len(st.session_state.messages)}")
+    if st.button("Web Dev", use_container_width=True):
+        response = send_chat_message("I want to build websites")
+        st.session_state.messages.append({"role": "user", "content": "I want to build websites", "timestamp": datetime.now().isoformat()})
+        st.session_state.messages.append({"role": "assistant", "content": response.get("response", ""), "data": response, "timestamp": datetime.now().isoformat()})
+        st.rerun()
     
-    # Quick actions
-    st.markdown("---")
-    st.markdown("### ⚡ Quick Actions")
+    if st.button("Data Science", use_container_width=True):
+        response = send_chat_message("I want to work with data")
+        st.session_state.messages.append({"role": "user", "content": "I want to work with data", "timestamp": datetime.now().isoformat()})
+        st.session_state.messages.append({"role": "assistant", "content": response.get("response", ""), "data": response, "timestamp": datetime.now().isoformat()})
+        st.rerun()
     
-    col1, col2 = st.columns(2)
+    if st.button("Mobile Apps", use_container_width=True):
+        response = send_chat_message("I want to create mobile apps")
+        st.session_state.messages.append({"role": "user", "content": "I want to create mobile apps", "timestamp": datetime.now().isoformat()})
+        st.session_state.messages.append({"role": "assistant", "content": response.get("response", ""), "data": response, "timestamp": datetime.now().isoformat()})
+        st.rerun()
     
-    with col1:
-        if st.button("🌐 Web", use_container_width=True):
-            response = send_chat_message("I want to build websites")
-            st.session_state.messages.append({
-                "role": "user",
-                "content": "I want to build websites",
-                "timestamp": datetime.now().isoformat()
-            })
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response.get("response", ""),
-                "data": response,
-                "timestamp": datetime.now().isoformat()
-            })
-            st.rerun()
-    
-    with col2:
-        if st.button("📊 Data", use_container_width=True):
-            response = send_chat_message("I want to work with data")
-            st.session_state.messages.append({
-                "role": "user",
-                "content": "I want to work with data",
-                "timestamp": datetime.now().isoformat()
-            })
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response.get("response", ""),
-                "data": response,
-                "timestamp": datetime.now().isoformat()
-            })
-            st.rerun()
-    
-    col3, col4 = st.columns(2)
-    
-    with col3:
-        if st.button("📱 Mobile", use_container_width=True):
-            response = send_chat_message("I want to create mobile apps")
-            st.session_state.messages.append({
-                "role": "user",
-                "content": "I want to create mobile apps",
-                "timestamp": datetime.now().isoformat()
-            })
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response.get("response", ""),
-                "data": response,
-                "timestamp": datetime.now().isoformat()
-            })
-            st.rerun()
-    
-    with col4:
-        if st.button("🎮 Games", use_container_width=True):
-            response = send_chat_message("I want to make games")
-            st.session_state.messages.append({
-                "role": "user",
-                "content": "I want to make games",
-                "timestamp": datetime.now().isoformat()
-            })
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response.get("response", ""),
-                "data": response,
-                "timestamp": datetime.now().isoformat()
-            })
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Chat history export
-    if st.button("💾 Download Chat", use_container_width=True):
-        history_json = json.dumps(st.session_state.messages, indent=2)
-        st.download_button(
-            label="📥 Download JSON",
-            data=history_json,
-            file_name=f"techguide_chat_{st.session_state.session_id[:8]}.json",
-            mime="application/json",
-            use_container_width=True
-        )
-    
-    # New chat
-    if st.button("🔄 New Chat", type="primary", use_container_width=True):
-        import uuid
-        st.session_state.session_id = str(uuid.uuid4())
-        st.session_state.messages = [{
-            "role": "assistant",
-            "content": "👋 Hello! I'm **TechGuide Bot**. What would you like to build today?",
-            "timestamp": datetime.now().isoformat()
-        }]
+    if st.button("Game Dev", use_container_width=True):
+        response = send_chat_message("I want to make games")
+        st.session_state.messages.append({"role": "user", "content": "I want to make games", "timestamp": datetime.now().isoformat()})
+        st.session_state.messages.append({"role": "assistant", "content": response.get("response", ""), "data": response, "timestamp": datetime.now().isoformat()})
         st.rerun()
     
     st.markdown("---")
+    st.markdown("### Session")
+    st.caption(f"**Messages:** {len(st.session_state.messages)}")
+    st.caption(f"**ID:** {st.session_state.session_id[:8]}...")
     
-    # About
-    with st.expander("ℹ️ About"):
-        st.markdown("""
-        **TechGuide Bot** is an AI-powered programming language advisor built with:
-        
-        - 🧠 **JAC** - Core reasoning engine
-        - ⚡ **FastAPI** - Backend API
-        - 🎨 **Streamlit** - Interactive UI
-        
-        **Features:**
-        - Conversational AI interface
-        - Smart language recommendations
-        - Personalized learning paths
-        - Career guidance
-        - Curated resources
-        """)
+    if st.button("New Chat", type="primary", use_container_width=True):
+        st.session_state.session_id = str(uuid.uuid4())
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! I'm TechGuide AI. What would you like to build?", "timestamp": datetime.now().isoformat()}]
+        st.rerun()
 
 # ============================================================================
-# MAIN CHAT INTERFACE
+# MAIN CHAT
 # ============================================================================
 
-# Header
-st.markdown("""
-<div class="main-header">
-    <h1>🤖 TechGuide Bot</h1>
-    <p>Your AI-Powered Programming Language Advisor</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1>TechGuide AI</h1><p>Your Intelligent Programming Language Advisor</p></div>', unsafe_allow_html=True)
 
-# Chat messages container
-chat_container = st.container()
-
-with chat_container:
-    for message in st.session_state.messages:
-        role = message["role"]
-        content = message["content"]
-        
-        if role == "user":
-            with st.chat_message("user", avatar="👤"):
-                st.markdown(content)
-        else:
-            with st.chat_message("assistant", avatar="🤖"):
-                st.markdown(content)
-                
-                # Display recommendation if available
-                if "data" in message and message["data"].get("ai_powered"):
-                    st.caption("🤖 AI-Powered Response (Gemini)")
-                    
+# Display messages
+for message in st.session_state.messages:
+    role = message["role"]
+    with st.chat_message(role):
+        st.markdown(message["content"])
+        if "data" in message and message["data"].get("type") == "recommendation":
+            display_recommendation(message["data"])
 
 # Chat input
-user_input = st.chat_input("💬 Tell me what you want to build...", key="chat_input")
+user_input = st.chat_input("Tell me what you want to build...")
 
 if user_input:
-    # Add user message
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "timestamp": datetime.now().isoformat()
-    })
+    st.session_state.messages.append({"role": "user", "content": user_input, "timestamp": datetime.now().isoformat()})
     
-    # Get bot response
-    response = send_chat_message(user_input)
+    with st.chat_message("assistant"):
+        with st.spinner(""):
+            time.sleep(0.3)
+            response = send_chat_message(user_input)
     
-    # Add bot response
     bot_message = {
         "role": "assistant",
-        "content": response.get("response") or response.get("reason", "I couldn't process that. Please try again."),
+        "content": response.get("response") or response.get("reason", "I couldn't process that."),
         "timestamp": datetime.now().isoformat()
     }
     
@@ -677,24 +650,7 @@ if user_input:
         bot_message["data"] = response
     
     st.session_state.messages.append(bot_message)
-    
-    # Rerun to display new messages
     st.rerun()
 
-# ============================================================================
-# FOOTER
-# ============================================================================
-
 st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666; padding: 2rem 0;">
-    <p style="font-size: 0.9rem;">
-        Built with ❤️ using <strong>JAC</strong>, <strong>FastAPI</strong>, and <strong>Streamlit</strong>
-    </p>
-    <p style="font-size: 0.8rem;">
-        <a href="http://localhost:8000/docs" target="_blank" style="color: #667eea; text-decoration: none;">📚 API Docs</a> | 
-        <a href="http://localhost:8000/health" target="_blank" style="color: #667eea; text-decoration: none;">💚 Health Check</a> |
-        <a href="https://github.com/yourusername/techguide-bot" target="_blank" style="color: #667eea; text-decoration: none;">⭐ GitHub</a>
-    </p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; color: var(--text-secondary); padding: 1.5rem 0;">Built with JAC • FastAPI • Streamlit • Gemini AI</div>', unsafe_allow_html=True)
